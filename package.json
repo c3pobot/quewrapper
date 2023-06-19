@@ -1,0 +1,15 @@
+{
+  "name": "quewrapper",
+  "version": "1.0.0",
+  "description": "bull que wrapper",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "scuba75",
+  "license": "ISC",
+  "dependencies": {
+    "bull": "^4.8.5",
+    "uuid": "^8.3.2"
+  }
+}
