@@ -85,7 +85,7 @@ module.exports = class QueWrapper {
           if(obj.jobId) await this.removeJob(obj.jobId)
         }
       }
-      console.log('Processed '+count+' left over in job que. Deleted '+failed+' invalid')
+      console.log('Processed '+count+' left over in '+this.opts.queName+' job que. Deleted '+failed+' invalid')
     }catch(e){
       console.error(e);
     }
