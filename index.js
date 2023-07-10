@@ -1,17 +1,10 @@
 'use strict'
-const Queue = require('bull')
 const { v4: uuidv4 } = require('uuid')
-const DefaultProcessor = async(obj = {})=>{
-  try{
-    console.log('There is no processor for '+obj?.data?.name)
-  }catch(e){
-    console.error(e);
-  }
-}
-
 module.exports = class QueWrapper {
   constructor(opts = {}) {
-    this.que = new Queue(opts.queName, opts.queOptions)
+    this.Queue = require('bull')
+    this.uuidv4 = uuidv4
+    this.que = new this.Queue(opts.queName, opts.queOptions)
     this.log = {
       info: this.logInfo,
       error: this.logError,
@@ -23,7 +16,7 @@ module.exports = class QueWrapper {
     this.defaultJobOpts = {removeOnComplete: true, removeOnFail: true, attempts: 1, timeout: 600000}
     if(opts.defaultJobOpts) this.defaultJobOpts = {...this.defaultJobOpts, ...opts.defaultJobOpts}
     this.cmdProcessor = opts.cmdProcessor
-    if(!this.cmdProcessor) this.cmdProcessor = DefaultProcessor
+    if(!this.cmdProcessor) this.cmdProcessor = this.defaultProcessor
     this.opts = opts
     if(!this.opts.numJobs) this.opts.numJobs = 3
     if(this.opts.createListeners) this.createListeners()
@@ -33,6 +26,13 @@ module.exports = class QueWrapper {
   }
   logError (msg){
     console.log(msg)
+  }
+  defaultProcessor(obj = {}){
+    try{
+      this.log.error('There is no processor for '+obj?.data?.name)
+    }catch(e){
+      thore(e);
+    }
   }
   process ()  {
     this.log.info('starting '+this.opts.queName+' processing with '+this.opts.numJobs+' workers')
@@ -113,7 +113,7 @@ module.exports = class QueWrapper {
     try{
       let jobOptions = JSON.parse(JSON.stringify(this.defaultJobOpts))
       if(opts) jobOptions = {...jobOptions, ...opts}
-      if(!jobOptions.jobId) jobOptions.jobId = await uuidv4()
+      if(!jobOptions.jobId) jobOptions.jobId = await this.uuidv4()
       const job = await this.que.add(this.opts.queName, data, jobOptions)
       return job
     }catch(e){
