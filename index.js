@@ -12,6 +12,12 @@ const DefaultProcessor = async(obj = {})=>{
 module.exports = class QueWrapper {
   constructor(opts = {}) {
     this.que = new Queue(opts.queName, opts.queOptions)
+    this.log = {
+      info: this.logInfo,
+      error: this.logError,
+      debug: this.logInfo
+    }
+    if(opts.logger) this.log = opts.logger
     this.localQue = opts.localQue
     this.localQueKey = opts.localQueKey
     this.defaultJobOpts = {removeOnComplete: true, removeOnFail: true, attempts: 1, timeout: 600000}
@@ -22,8 +28,14 @@ module.exports = class QueWrapper {
     if(!this.opts.numJobs) this.opts.numJobs = 3
     if(this.opts.createListeners) this.createListeners()
   }
+  logInfo (msg){
+    console.log(msg)
+  }
+  logError (msg){
+    console.log(msg)
+  }
   process ()  {
-    console.log('starting '+this.opts.queName+' processing with '+this.opts.numJobs+' workers')
+    this.log.info('starting '+this.opts.queName+' processing with '+this.opts.numJobs+' workers')
     this.que.process('*', this.opts.numJobs, (job)=>{
       return new Promise(async(resolve, reject)=>{
         try{
@@ -38,7 +50,6 @@ module.exports = class QueWrapper {
     			}
     			resolve(res)
         }catch(e){
-          console.error(e);
           reject(e);
         }
       })
@@ -53,7 +64,7 @@ module.exports = class QueWrapper {
       if(this.localQue && this.localQueKey) await this.localQue.setTTL(this.localQueKey+'-'+obj.jobId, obj, 600)
       return obj
     }catch(e){
-      console.error(e);
+      throw(e);
     }
   }
   async start (){
@@ -61,7 +72,7 @@ module.exports = class QueWrapper {
       if(this.localQue && this.localQueKey) await this.processLocalQue(this.que)
       this.process()
     }catch(e){
-      console.error(e);
+      this.log.error(e);
       setTimeout(this.start, 500)
     }
   }
@@ -85,9 +96,9 @@ module.exports = class QueWrapper {
           if(obj.jobId) await this.removeJob(obj.jobId)
         }
       }
-      console.log('Processed '+count+' left over in '+this.opts.queName+' job que. Deleted '+failed+' invalid')
+      this.log.info('Processed '+count+' left over in '+this.opts.queName+' job que. Deleted '+failed+' invalid')
     }catch(e){
-      console.error(e);
+      this.log.error(e);
     }
   }
   async add (data, opts){
@@ -95,7 +106,7 @@ module.exports = class QueWrapper {
       const job = await this.newJob(data, opts)
       return job?.finished()
     }catch(e){
-      console.error(e);
+      throw(e);
     }
   }
   async newJob (data, opts){
@@ -106,28 +117,28 @@ module.exports = class QueWrapper {
       const job = await this.que.add(this.opts.queName, data, jobOptions)
       return job
     }catch(e){
-      console.error(e);
+      throw(e);
     }
   }
   async getJob (jobId){
     try{
       return await this.que.getJob(jobId)
     }catch(e){
-      console.error(e);
+      throw(e);
     }
   }
   async getCompleted (){
     try{
       return await this.que.getCompleted()
     }catch(e){
-      console.error(e);
+      throw(e);
     }
   }
   async getJobs (){
     try{
       return await this.que.getJobs()
     }catch(e){
-      console.error(e);
+      throw(e);
     }
   }
   async removeJob (jobId) {
@@ -142,13 +153,13 @@ module.exports = class QueWrapper {
     }
   }
   createListeners (){
-    console.log('Creating '+this.opts.queName+' que listeners...')
+    this.log.info('Creating '+this.opts.queName+' que listeners...')
     this.que.on('global:failed', function (jobId, err) {
-			console.log(`Job ${jobId} failed with reason: ${err}`)
+			this.log.info(`Job ${jobId} failed with reason: ${err}`)
 			// A job failed with reason `err`!
 		})
 		this.que.on('global:error', (error)=>{
-			console.error(error);
+			this.log.error(error);
 		})
   }
 }
